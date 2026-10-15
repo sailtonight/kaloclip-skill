@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kaloclip-mcp"
+dynamic = ["version"]
+description = "Kaloclip AI short-video creation CLI and local MCP server"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[project.optional-dependencies]
+mcp = ["mcp>=2.3,<3", "pydantic>=2.11,<3", "anyio>=4.9,<5"]
+
+[project.scripts]
+clip = "kaloclip.cli:entry"
+kaloclip-mcp = "kaloclip.mcp_server:entry"
+
+[tool.setuptools.packages.find]
+where = ["skills/kaloclip/scripts"]
+include = ["kaloclip*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "kaloclip.__version__"}
