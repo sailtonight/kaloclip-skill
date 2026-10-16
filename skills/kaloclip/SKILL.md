@@ -3,8 +3,8 @@ name: kaloclip
 description: >
   Make AI short videos for TikTok Shop products with Kaloclip via the bundled `clip` CLI
   (Python, zero install): turn a product link (TikTok Shop, Kalodata, Amazon) or product
-  images into a video script, then into a finished 8–30s vertical/horizontal video; estimate
-  the credit cost first; break an existing TikTok / YouTube Shorts video down into shots,
+  images into a video script, then into a finished vertical/horizontal video; check the
+  credit cost first; break an existing TikTok / YouTube Shorts video down into shots,
   voice-over and camera moves. Use whenever the user wants a product video, UGC-style ad,
   带货视频、商品视频、短视频脚本、AI 生成视频、仿写/拆解爆款视频脚本、分镜 — even if they never
   say "kaloclip".
@@ -48,14 +48,16 @@ and don't retry. Walk the user through these steps and wait:
    |---|---|
    | `options`, `credit`, `product resolve`, `image upload/import`, `video preview`, any `get` / `job` | free |
    | `script create` | 2 |
-   | `video create` | what `video preview` says for the model/duration/resolution (e.g. sd2 · 15s · 720P = 28) |
-   | `analysis create` | Kaloclip's price for a script analysis |
+   | `video create` | the `credits` of the chosen `clip options` row (prices change — never quote one from memory) |
+   | `analysis create` | 1 |
+
+   Failed jobs are refunded automatically.
 
 ## Commands
 
 | command | what |
 |---|---|
-| `clip options` | models, durations, resolutions available right now; which model allows which duration |
+| `clip options` | the model × duration × resolution combinations accepted right now, each with its credits |
 | `clip credit` | remaining credits |
 | `clip product resolve <link>` | product link → title, categories, selling points, image assets |
 | `clip image upload <file...>` | 1–6 local images (JPEG/PNG/GIF/WebP, ≤5MB) → asset ids |
@@ -73,25 +75,27 @@ and don't retry. Walk the user through these steps and wait:
 
 ## The video flow
 
-1. `clip options` — pick `--model` and `--duration` together from its output. Models and their
-   durations change; never use a model from memory.
+1. `clip options [--language <lang>]` — pick one row: its `model`, `duration` and `resolution` go
+   to `--model`, `--duration`, `--resolution`, and its `credits` is the video's price. Only listed
+   rows are accepted and they change; never use a model from memory. Pass the language the video
+   will use (`th` hides some models). Check `clip credit` covers the price before drafting.
 2. Product material, either:
    - `clip product resolve <link>` to check what the link yields, then pass the same
      `--product-link` to `script create`; or
    - the user's own images: `clip image upload a.png b.jpg` → `--image ASSET_ID=IMAGE_URL` (repeat,
      1–6), plus `--title` and `--category`.
 3. Ask what the video should feel like (tone, scene, hook) and pass it as `--description`.
-4. `clip script create --product-link <link> --model <M> --duration <S> --description "..."` → a
+4. `clip script create --product-link <link> --model <M> --duration <S> --resolution <R> --description "..."` → a
    dry run. Show it, get a yes, rerun with `--yes --idempotency-key <key from the hint> --wait`
    (a draft takes about 30–60s; the credits are charged on submit).
 5. Show the script. To change it, write the edited text to a file and use `--script-file`.
-6. `clip video create --script-job <job_id> [--script-file edited.txt] [--resolution 1080P]` → a
-   dry run that includes the credit cost. Get a yes, rerun with `--yes --idempotency-key <key>`.
+6. `clip video create --script-job <job_id> [--script-file edited.txt]` → a dry run that includes
+   the credit cost; it reuses the draft's options row (model, duration, resolution). Get a yes, rerun with `--yes --idempotency-key <key>`.
 7. `clip video get <job_id> --wait` — a 15s video takes about 15 minutes (`--wait` polls up to 20).
    Tell the user it is running; if `--wait` times out, poll again — never resubmit. Hand `videoUrl`
    (mp4) and `coverImageUrl` to the user.
 
-`--script-job` reuses the images, title, model and duration the draft was submitted with when the
+`--script-job` reuses the images, title, model, duration and resolution of the draft when the
 draft was made on this machine; otherwise pass them again (`--product-link` covers most of it).
 
 ## Spending credits
@@ -111,20 +115,23 @@ never loop submits.
   charged; wait for the running video, then submit again.
 - `RATE_LIMIT_EXCEEDED`: per-user limits (uploads/imports 10/min, product resolve 10/min, preview
   20/min, videos 5/min) — wait at least 60 seconds.
+- **A job `failed`**: the output shows `error_code` and a `help:` line saying what to change
+  (e.g. replace a flagged image, shorten the script). Tell the user, fix that input, and submit a
+  new job with a new key only after they agree. The failed job's credits are refunded.
 
 ## Script analysis
 
 `clip analysis create <tiktok|kalodata|youtube-shorts url>` breaks a video into scenes
-(`video_scripts[]`: time, shot scale, visual description, voice-over, each with a translation),
-plus presenter gender, spoken language, camera moves and why it works. Shoppable TikTok videos:
+(`video_scripts[]`: time, shot scale, visual description, voice-over), plus presenter gender, spoken language, camera moves and why it works. Shoppable TikTok videos:
 add `--commerce --country US`. Results stay readable for 30 days (`clip analysis get <job_id>`);
-add `--json` for every field. Use it to learn from a viral video before drafting your own script.
+add `--json` for every field (`translate_*` fields are always null — ignore them). Use it to learn from a viral video before drafting your own script.
 
 ## Reading the data right
 
 - A completed draft's script is long-form direction (talent, style, scene, per-scene VISUAL /
   AUDIO / TALENT ACTION). Show it whole; don't summarize it away before the user approves.
-- `video preview` is an estimate; a submit can still be refused (queue, membership, inputs).
+- `clip options` and `video preview` give the price, but a submit can still be refused (queue,
+  balance, inputs).
 - `videoUrl` is the finished file; Free-membership videos carry a watermark.
 - `selling_points` from `product resolve` can be empty while Kaloclip is still analysing the
   product — rerun in a minute or go on without them.

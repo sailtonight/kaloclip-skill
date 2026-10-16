@@ -20,7 +20,7 @@ DESCRIPTION = (
 
 # (command, what) — the `what` column is deliberately terse; details live in --help
 COMMAND_TABLE = [
-    ("clip options", "models / durations / resolutions available now (free)"),
+    ("clip options", "model × duration × resolution rows with credits (free)"),
     ("clip credit", "remaining credits (free)"),
     ("clip product resolve <link>", "product link → title, categories, selling points, image assets (free)"),
     ("clip image upload <file...>", "local images → asset ids, 1-6, ≤5MB each (free)"),
@@ -39,9 +39,9 @@ COMMAND_TABLE = [
 
 CONVENTIONS = [
     "[credits] commands only print a dry run until rerun with --yes — show it to the user first",
-    "Flow: product resolve → script create → script get --wait → video preview → video create → video get --wait",
+    "Flow: options → product resolve → script create → script get --wait → video preview → video create → video get --wait",
     "Jobs are async: keep the job id and poll (`--wait`); never resubmit a queued/processing job",
-    "--image takes ASSET_ID=IMAGE_URL (repeat, 1-6); models and durations always from `clip options`",
+    "--image takes ASSET_ID=IMAGE_URL (repeat, 1-6); --model/--duration/--resolution from one `clip options` row",
     "Run `clip <command> --help` for per-command flags and examples",
 ]
 

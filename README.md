@@ -23,14 +23,14 @@ export KALODATA_API_KEY=<token>      # or: clip config set --key <token>
 
 The key is sent as the `secret-key` header to the KaloData gateway (`/openapi/v1/clip/**`), which identifies the account from it. Optional: `KALOCLIP_BASE_URL`, or `clip config set --base-url staging` for the staging gateway.
 
-Jobs spend the account's credits at Kaloclip prices, under the account's Kaloclip membership (video queue size, watermark): a script draft costs 2 credits; a video costs what `clip video preview` reports for the model, duration and resolution (sd2 · 15s · 720P = 28). Everything else is free. `clip credit` shows the balance.
+Jobs spend the account's credits at Kaloclip prices, under the account's Kaloclip membership (video queue size, watermark): a script draft costs 2 credits, a script analysis 1; a video costs the `credits` that `clip options` lists for its model × duration × resolution. Everything else is free, and failed jobs are refunded. `clip credit` shows the balance.
 
 ## Usage
 
 ```sh
 alias clip="python3 skills/kaloclip/scripts/clip.py"
 
-clip options                                   # models × durations available now
+clip options                                   # model × duration × resolution rows, credits each
 clip product resolve 'https://shop.tiktok.com/view/product/1732052189676081387?region=US'
 clip script create --product-link '<link>' --model sd2 --duration 15 --description 'playful unboxing'
 #   → dry run with the cost; rerun with --yes --idempotency-key <key> --wait
@@ -47,7 +47,7 @@ Output is token-efficient TOON; add `--json` for raw JSON. Exit codes: `0` succe
 
 | Command | Description |
 |---|---|
-| `clip options` | Models, durations, resolutions; which model allows which duration |
+| `clip options` | Model × duration × resolution combinations accepted now, with credits per video |
 | `clip credit` | Credit balance |
 | `clip product resolve <link>` | TikTok Shop / Kalodata / Amazon link → title, categories, selling points, image assets |
 | `clip image upload <file...>` / `clip image import <url...>` | Images → asset ids (`--image ASSET_ID=URL`) |

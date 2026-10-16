@@ -119,6 +119,8 @@ def create_server():
         "kaloclip", version=__version__,
         instructions="Kaloclip AI short-video creation. Flow: options → product_resolve (or image_upload) → "
                      "script_create → script_get(wait) → video_preview → video_create → video_get(wait). "
+                     "model, duration and resolution must come from one options row; its credits is the "
+                     "video's price. "
                      "script_create, video_create and analysis_create spend credits and only return a "
                      "dry run until called again with yes=true after the user agrees. Jobs are async: "
                      "poll them, never resubmit one that is queued/processing. Credentials come from the "

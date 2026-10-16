@@ -80,7 +80,33 @@ def test_headers_never_carry_a_user_id(capsys, env):
 
 # --- free calls --------------------------------------------------------------
 
-def test_options_pairs_models_with_durations(capsys, env):
+def test_options_lists_combinations_with_credits(capsys, env):
+    env.responses["/videos/options"] = ok({
+        "aspectRatios": ["RATIO_9_16", "RATIO_16_9"],
+        "models": [
+            {"internalModelId": "giv15", "name": "Grok Imagine 1.5", "combinations": [
+                {"duration": 8, "resolution": "720P", "credits": 10},
+                {"duration": 15, "resolution": "1080P", "credits": 12},
+            ]},
+            {"internalModelId": "off", "name": "Empty", "combinations": []},
+        ],
+    })
+    code, out = run(capsys, "options", "--language", "th")
+    assert code == 0
+    assert "combinations[2]{model,name,duration,resolution,credits}:" in out
+    assert "giv15,Grok Imagine 1.5,8,720P,10" in out and "giv15,Grok Imagine 1.5,15,1080P,12" in out
+    assert 'ratios[2]: "9:16","16:9"' in out
+    assert env.requests[0][2] == {"video-language": "th"}
+
+
+def test_options_without_models(capsys, env):
+    env.responses["/videos/options"] = ok({"aspectRatios": ["RATIO_9_16"], "models": []})
+    code, out = run(capsys, "options")
+    assert code == 0
+    assert "combinations: 0 results" in out
+
+
+def test_options_legacy_shape_pairs_models_with_durations(capsys, env):
     env.responses["/videos/options"] = ok({
         "modelOptions": [{"value": "sd2", "label": "sd2_label"}, {"value": "sr2l", "label": "sr2l_label"}],
         "durationOptions": [{"label": "15 S", "value": 15, "default": True}],
@@ -92,7 +118,7 @@ def test_options_pairs_models_with_durations(capsys, env):
     assert code == 0
     assert "models[2]{model,durations}:" in out
     assert 'sd2,"15"' in out and "sr2l,null" in out
-    assert "No duration allows sr2l" in out
+    assert "sr2l not in the duration rules" in out
     assert env.requests[0][2] == {"video-language": "en"}
 
 
@@ -193,6 +219,27 @@ def test_video_create_yes(capsys, env, tmp_path):
     assert posts(env, "/videos/preview") == []  # no estimate once the user confirmed
 
 
+def test_script_job_reuses_the_drafts_resolution(capsys, env):
+    env.responses["/scripts"] = [ok(7), ok({"id": 7, "state": "completed", "jobType": "REFERENCE_SCRIPT_GENERATE",
+                                           "output": {"script": "S"}})]
+    run(capsys, "script", "create", "--image", IMG, "--title", "t", "--category", "c", "--model", "giv15",
+        "--duration", "15", "--resolution", "1080P", "--yes")
+    (_, _, _, _, body), = posts(env, "/scripts")
+    assert "resolution" not in body  # /scripts takes no resolution
+    run(capsys, "video", "create", "--script-job", "7")
+    (_, _, _, _, preview), = posts(env, "/videos/preview")
+    assert preview["resolution"] == "1080P"
+    run(capsys, "video", "create", "--script-job", "7", "--resolution", "720P")
+    assert posts(env, "/videos/preview")[-1][4]["resolution"] == "720P"  # an explicit flag wins
+
+
+def test_dry_run_needs_a_key(capsys, env, monkeypatch):
+    monkeypatch.delenv("KALODATA_API_KEY")
+    code, out = run(capsys, "analysis", "create", "https://www.tiktok.com/@x/video/1")
+    assert code == 1
+    assert "no KaloData API key" in out and "dry_run" not in out
+
+
 def test_script_job_from_elsewhere_needs_inputs(capsys, env):
     env.responses["/scripts"] = ok({"id": 5, "state": "completed", "output": {"script": "x"}})
     code, out = run(capsys, "video", "create", "--script-job", "5")
@@ -218,11 +265,18 @@ def test_analysis_create(capsys, env):
                     "country": "US", "commerce": True}
 
 
+def test_analysis_dry_run_shows_credits(capsys, env):
+    code, out = run(capsys, "analysis", "create", "https://www.tiktok.com/@x/video/1")
+    assert code == 0
+    assert out.startswith("dry_run:") and "credits: 1" in out
+    assert env.requests == []
+
+
 @pytest.mark.parametrize("argv,needle", [
     (["script", "create", "--image", "nope", "--title", "t", "--category", "c", "--model", "m", "--duration", "15"],
      "--image expects ASSET_ID=IMAGE_URL"),
-    (["script", "create", "--image", IMG, "--title", "t", "--category", "c", "--model", "m", "--duration", "13"],
-     "--duration must be one of"),
+    (["script", "create", "--image", IMG, "--title", "t", "--category", "c", "--model", "m", "--duration", "0"],
+     "--duration must be a positive number"),
     (["script", "create", "--image", IMG, "--model", "m", "--duration", "15"], "missing: --title, --category"),
     (["video", "create", "--title", "t", "--image", IMG, "--model", "m", "--duration", "15"],
      "missing the final script"),
@@ -260,6 +314,29 @@ def test_completed_video(capsys, env):
     assert "videoUrl: \"https://v/3.mp4\"" in out
     assert 'created: "2026-10-15T02:48:37Z"' in out
     assert env.requests[0][2] == {"jobId": "3"}
+
+
+def test_old_video_falls_back_to_enhance_url(capsys, env):
+    env.responses["/jobs"] = ok({"id": 4, "state": "completed", "jobType": "VIDEO_CREATION",
+                                 "output": {"videoUrl": None, "enhanceVideoUrl": "https://v/4e.mp4"}})
+    code, out = run(capsys, "job", "4")
+    assert code == 0
+    assert 'videoUrl: "https://v/4e.mp4"' in out and "enhanceVideoUrl" not in out
+
+
+@pytest.mark.parametrize("error_code,needle", [
+    ("IMAGE_REAL_PERSON", "replace it"),
+    ("SCRIPT_TOO_LONG", "shorten it"),
+    (None, "Kaloclip failed on its side"),
+    ("SOMETHING_NEW", "Kaloclip failed on its side"),
+])
+def test_failed_job_hint_follows_error_code(capsys, env, error_code, needle):
+    env.responses["/jobs"] = ok({"id": 5, "state": "failed", "jobType": "VIDEO_CREATION",
+                                 "errorCode": error_code, "errorMessage": "normalized reason"})
+    code, out = run(capsys, "job", "5")
+    assert code == 0
+    assert needle in out and "refunded" in out
+    assert (f"error_code: {error_code}" in out) == bool(error_code)
 
 
 def test_candidates(capsys, env):
@@ -326,6 +403,6 @@ def test_json_mode_is_raw(capsys, env):
 
 
 def test_bad_flags_fail_before_the_product_resolve(capsys, env):
-    code, out = run(capsys, "script", "create", "--product-link", LINK, "--model", "sd2", "--duration", "13")
+    code, out = run(capsys, "script", "create", "--product-link", LINK, "--model", "sd2", "--duration", "0")
     assert code == 2
     assert env.requests == []

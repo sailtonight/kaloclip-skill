@@ -12,7 +12,8 @@ from .assets import resolve_product
 
 SCRIPT_MAX = 8000
 DESCRIPTION_MAX = 1000
-SCRIPT_CREDITS = 2  # flat per draft (agreed with Kaloclip product; measured on staging)
+SCRIPT_CREDITS = 2  # flat per draft, refunded on failure
+ANALYSIS_CREDITS = 1  # flat per analysis, refunded on failure
 
 # Fields a remembered script draft shares with POST /videos.
 _CARRY = (
@@ -105,7 +106,8 @@ def script_create(cfg, opts, args):
     job_id = common.submit(cfg, opts, "/scripts", body, extra_preview={"credits": SCRIPT_CREDITS})
     if job_id is None:
         return 0
-    common.remember_job(job_id, body)
+    # /scripts takes no resolution; keep the chosen one for `video create --script-job`
+    common.remember_job(job_id, {**body, **common.compact({"resolution": opts.get("resolution")})})
     return _then_wait(cfg, opts, "/jobs", job_id, "script_job",
                       f"Poll for the script: `clip script get {job_id} --wait` (usually under a minute)")
 
@@ -143,11 +145,11 @@ def script_candidates(cfg, opts, args):
 
 # --- video -------------------------------------------------------------------
 
-def _preview_body(fields: dict, opts) -> dict:
+def _preview_body(fields: dict, opts, resolution: str | None = None) -> dict:
     return {
         "aspectRatio": common.ratio(opts),
         "duration": fields.get("duration"),
-        "resolution": opts.get("resolution") or "720P",
+        "resolution": resolution or opts.get("resolution") or "720P",
         "internalModelId": fields.get("internalModelId"),
         "quantity": 1,
     }
@@ -215,7 +217,7 @@ def video_create(cfg, opts, args):
         "imageInfos": "--image (or --product-link)", "productTitle": "--title",
         "duration": "--duration", "internalModelId": "--model",
     }, recalled)
-    preview = _preview_body(fields, opts)
+    preview = _preview_body(fields, opts, opts.get("resolution") or (snapshot or {}).get("resolution"))
     body = {
         "creditSourceType": common.CREDIT_SOURCE,
         **fields,
@@ -260,7 +262,7 @@ def analysis_create(cfg, opts, args):
         "creditSourceType": common.CREDIT_SOURCE, "videoUrl": url, "country": country,
     })
     body["commerce"] = commerce
-    job_id = common.submit(cfg, opts, "/script-analysis", body)
+    job_id = common.submit(cfg, opts, "/script-analysis", body, extra_preview={"credits": ANALYSIS_CREDITS})
     if job_id is None:
         return 0
     return _then_wait(cfg, opts, "/script-analysis", job_id, "analysis_job",
@@ -294,7 +296,8 @@ COMMANDS = [
         path="script create",
         summary=f"Draft a video script from product info and images ({SCRIPT_CREDITS} credits; async job)",
         handler=script_create,
-        flags=[*product_flags(), common.duration_flag(), common.model_flag(), *_submit_flags()],
+        flags=[*product_flags(), common.duration_flag(), common.model_flag(),
+               common.resolution_flag(None, "; not sent — `video create --script-job` reuses it"), *_submit_flags()],
         examples=[
             "clip script create --product-link https://shop.tiktok.com/view/product/1732052189676081387 "
             "--model sd2 --duration 15",
@@ -341,7 +344,8 @@ COMMANDS = [
             Flag("--script-type", "CREATIVE (default) | FIDELITY (rewrite candidates)", choices=common.SCRIPT_TYPES,
                  metavar="TYPE"),
             *product_flags(), common.duration_flag(), common.model_flag(),
-            common.resolution_flag(), common.ratio_flag(), *_submit_flags(),
+            common.resolution_flag(None, " (default: the --script-job draft's, else 720P)"), common.ratio_flag(),
+            *_submit_flags(),
         ],
         examples=[
             "clip video create --script-job 123456",
@@ -363,7 +367,7 @@ COMMANDS = [
     Command(
         path="analysis create",
         summary="Break an existing TikTok / Kalodata / YouTube Shorts video into shots, voice-over, "
-                "camera moves (spends credits; async job)",
+                f"camera moves ({ANALYSIS_CREDITS} credit; async job)",
         handler=analysis_create,
         flags=[
             Flag("--commerce", "shoppable video analysis (TikTok only, needs --country)", kind="flag", default=False),
