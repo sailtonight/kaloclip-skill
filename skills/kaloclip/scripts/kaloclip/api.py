@@ -39,7 +39,7 @@ class _Retryable(Exception):
     pass
 
 
-def _require_auth(cfg: Config) -> None:
+def require_auth(cfg: Config) -> None:
     if not cfg.api_key:
         raise ClipError(NO_KEY_MESSAGE, kind="auth", help_lines=AUTH_HELP)
 
@@ -179,7 +179,7 @@ def request(
     Retries (network errors, 5xx) resend the identical request, so job
     submissions must carry their Idempotency-Key in `headers`.
     """
-    _require_auth(cfg)
+    require_auth(cfg)
     url = cfg.base_url.rstrip("/") + path
     if params:
         query = {k: v for k, v in params.items() if v not in (None, "")}

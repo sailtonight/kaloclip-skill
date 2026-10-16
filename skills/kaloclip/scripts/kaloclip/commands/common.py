@@ -13,11 +13,10 @@ from ..core import Flag
 from ..errors import ClipError, UsageError
 
 IMAGES_MAX = 6
-DURATIONS = (8, 12, 15, 20, 30)
 RESOLUTIONS = ("480P", "720P", "1080P", "4K")
 RATIOS = {"9:16": "RATIO_9_16", "16:9": "RATIO_16_9", "RATIO_9_16": "RATIO_9_16", "RATIO_16_9": "RATIO_16_9"}
 SCRIPT_TYPES = ("CREATIVE", "FIDELITY")
-CREDIT_SOURCE = "OPENAPI"  # the only value Kaloclip accepts for OpenAPI callers (else PILOT)
+CREDIT_SOURCE = "OPENAPI"  # Kaloclip's credit source for KaloData gateway callers
 OPEN_STATES = ("queued", "processing")
 POLL_SECONDS = 5.0
 WAIT_DEFAULT = 1200  # a 15s sd2 video took ~15 min on staging; drafts ~35s
@@ -67,13 +66,12 @@ def model_flag(required_hint: str = "") -> Flag:
 
 
 def duration_flag() -> Flag:
-    return Flag("--duration", "seconds: " + "|".join(map(str, DURATIONS)) + " — must suit --model (`clip options`)",
-                kind="int", metavar="SECONDS")
+    return Flag("--duration", "seconds, from the same `clip options` row as --model", kind="int", metavar="SECONDS")
 
 
-def resolution_flag() -> Flag:
-    return Flag("--resolution", "|".join(RESOLUTIONS) + " (480P on some models only)", default="720P",
-                choices=RESOLUTIONS, metavar="RES")
+def resolution_flag(default: str | None = "720P", note: str = "") -> Flag:
+    return Flag("--resolution", "|".join(RESOLUTIONS) + ", from the same `clip options` row as --model" + note,
+                default=default, choices=RESOLUTIONS, metavar="RES")
 
 
 def ratio_flag() -> Flag:
@@ -111,8 +109,9 @@ def need(opts, *names: str) -> None:
 
 def duration(opts) -> int | None:
     value = opts.get("duration")
-    if value is not None and value not in DURATIONS:
-        raise UsageError(f"--duration must be one of {', '.join(map(str, DURATIONS))}, got {value}")
+    if value is not None and value < 1:
+        raise UsageError(f"--duration must be a positive number of seconds, got {value}",
+                         ["Pick it from a `clip options` row"])
     return value
 
 
@@ -134,6 +133,8 @@ def submit(cfg, opts, path: str, body: dict, *, extra_preview: dict | None = Non
     submit without being billed twice.
     """
     key = opts.get("idempotency_key") or f"clip-{uuid.uuid4().hex}"
+    # no dry run the user could approve but that could never be submitted
+    api.require_auth(cfg)
     if not opts.get("yes"):
         preview = {"method": "POST", "path": path, "idempotency_key": key, **(extra_preview or {}), "body": body}
         if opts.get("json"):
@@ -240,13 +241,44 @@ def job_display(job: dict) -> dict:
         "type": job.get("jobType"),
         "state": job.get("state"),
         "error": job.get("errorMessage"),
+        "error_code": job.get("errorCode"),
         "created": ms_iso(job.get("gmtCreated")),
         "updated": ms_iso(job.get("gmtUpdated")),
     })
     output = job.get("output")
     if isinstance(output, dict) and output:
+        output = dict(output)
+        # enhanceVideoUrl only stands in for videoUrl on old jobs
+        if output.get("videoUrl"):
+            output.pop("enhanceVideoUrl", None)
+        elif output.get("enhanceVideoUrl"):
+            output["videoUrl"] = output.pop("enhanceVideoUrl")
         out["output"] = output
     return out
+
+
+# Failed jobs: branch on errorCode, never on errorMessage text.
+_RETRY = "submit it again as a new job (new --idempotency-key)"
+_FAILURE_HINTS = {
+    "COPYRIGHT": "Suspected copyrighted material — replace the images/script/video involved, then " + _RETRY,
+    "IMAGE_MINOR": "An image shows a minor — replace that image, then " + _RETRY,
+    "IMAGE_SENSITIVE": "An image was flagged — replace it, then " + _RETRY,
+    "IMAGE_REAL_PERSON": "An image looks like a real person — replace it, then " + _RETRY,
+    "TEXT_SENSITIVE": "The text breaks platform rules — reword the script/description, then " + _RETRY,
+    "VIDEO_SENSITIVE": "The input video was flagged — use another video, then " + _RETRY,
+    "VIDEO_REAL_PERSON": "The input video shows a real person — use another video, then " + _RETRY,
+    "AUDIO_SENSITIVE": "The audio was flagged — change the voice-over text, then " + _RETRY,
+    "OUTPUT_SENSITIVE": "The generated result was flagged — adjust the script/description, then " + _RETRY,
+    "CONTENT_SENSITIVE": "The script or video content was flagged — adjust it, then " + _RETRY,
+    "SECURITY_REVIEW": "Failed the safety review — adjust the content, then " + _RETRY,
+    "SCRIPT_TOO_LONG": "The script is too long for this duration — shorten it, then " + _RETRY,
+}
+
+
+def failure_hint(job: dict) -> str:
+    """Unknown or missing codes mean a transient server failure (SERVER_BUSY)."""
+    return _FAILURE_HINTS.get(job.get("errorCode") or "",
+                              "Kaloclip failed on its side — wait a minute, then " + _RETRY + " with the same inputs")
 
 
 def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
@@ -258,18 +290,18 @@ def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
         return [f"Still {state} — poll with `clip job {job_id} --wait` (checks every {int(POLL_SECONDS)}s); "
                 "don't submit it again"]
     if state == "failed":
-        return ["The job failed (see error); fix the inputs and submit a new job — check `clip credit` for the balance"]
+        return [failure_hint(job), "The credits of a failed job are refunded automatically"]
     if state != "completed":
         return []
     if jtype == "VIDEO_CREATION":
-        return ["videoUrl is the finished video — hand it to the user or download it now"]
+        return ["videoUrl is the finished video (coverImageUrl its cover) — hand both to the user"]
     if jtype == "SCRIPT_ANALYSIS":
         return ["output.result holds the shot-by-shot breakdown (video_scripts[]) — add --json for every field"]
     if "SCRIPT" in jtype:
         return [
             "Review the script with the user; to change it, save the edited text to a file for --script-file",
             f"Make the video: `clip video create --script-job {job_id} [--script-file edited.txt]` — reuses the "
-            "draft's images/title/model/duration if it was drafted on this machine, else add --product-link or "
+            "draft's images/title/model/duration/resolution if it was drafted on this machine, else add --product-link or "
             "--title/--image/--model/--duration; the dry run shows the credits",
         ]
     return []

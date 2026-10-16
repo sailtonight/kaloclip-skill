@@ -13,11 +13,38 @@ IMAGE_MAX_BYTES = 5 * 1024 * 1024
 IMAGE_TYPES = (".jpg", ".jpeg", ".png", ".gif", ".webp")
 
 
+_RATIO_LABELS = {v: k for k, v in common.RATIOS.items() if ":" in k}
+
+
 def options(cfg, opts, args):
     data = api.request(cfg, "GET", "/videos/options", params={"video-language": opts.get("language")}) or {}
     if opts.get("json"):
         render.emit_json(data)
         return 0
+    if "models" not in data:
+        return _legacy_options(data)
+    rows = [
+        {"model": m.get("internalModelId"), "name": m.get("name"), "duration": c.get("duration"),
+         "resolution": c.get("resolution"), "credits": c.get("credits")}
+        for m in data.get("models") or [] for c in m.get("combinations") or []
+    ]
+    if not rows:
+        render.emit_empty("combinations", "no model can be submitted right now",
+                          ["Try again later; with --language th some models are hidden"])
+        return 0
+    render.emit_table("combinations", rows, ("model", "name", "duration", "resolution", "credits"))
+    render.emit_detail("other", {"ratios": [_RATIO_LABELS.get(r, r) for r in data.get("aspectRatios") or []]})
+    render.emit_help([
+        "Pick one row: --model <model> --duration <duration> --resolution <resolution>; only listed "
+        "combinations are accepted — never use one from memory",
+        "credits is the price of one video; `clip credit` must show at least that much",
+        "Query with the --language the video will use (th hides some models)",
+    ])
+    return 0
+
+
+def _legacy_options(data: dict) -> int:
+    """The pre-credits shape (modelOptions + duration rules), kept while gateways roll over."""
     rules = data.get("rules") or {}
     by_duration = rules.get("duration_model") or {}
     usable = {m for ms in by_duration.values() for m in ms or []}
@@ -43,7 +70,10 @@ def options(cfg, opts, args):
     })
     unusable = [m["model"] for m in models if m["model"] not in usable]
     if unusable:
-        render.emit_help([f"No duration allows {', '.join(unusable)} right now — don't use them"])
+        render.emit_help([
+            f"{', '.join(unusable)} not in the duration rules — the rules can be incomplete, so check a "
+            "combination with `clip video preview --model <MODEL> --duration <S>` (free) before using it",
+        ])
     render.emit_help([
         "A --model only works with the durations listed for it; pick both from this output, never from memory",
         "Estimate credits before submitting: `clip video preview --model <MODEL> --duration <S> --resolution 720P`",
@@ -56,11 +86,11 @@ def credit(cfg, opts, args):
     if opts.get("json"):
         render.emit_json(data)
         return 0
-    display = {
+    display = common.compact({
         "total_remain": data.get("totalRemain"),
         "monthly_remain": data.get("monthlyRemain"),
         "permanent_remain": data.get("permanentRemain"),
-    }
+    })
     if data.get("subAccount"):
         display["main_total_remain"] = data.get("mainTotalRemain")
     display["account"] = "sub-account" if data.get("subAccount") else "main account"
@@ -158,9 +188,9 @@ def product(cfg, opts, args):
 COMMANDS = [
     Command(
         path="options",
-        summary="Models, durations, resolutions and ratios available for videos right now (free)",
+        summary="Model × duration × resolution combinations accepted right now, with credits per video (free)",
         handler=options,
-        flags=[Flag("--language", "video language; en/zh hide some 15s models", metavar="LANG")],
+        flags=[Flag("--language", "language the video will use, e.g. en; th hides some models", metavar="LANG")],
         examples=["clip options", "clip options --language en"],
     ),
     Command(
