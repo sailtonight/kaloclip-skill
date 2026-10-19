@@ -105,6 +105,9 @@ _GATEWAY_HINTS = {
     "PAYLOAD_TOO_LARGE": "The request is over 32MB — upload fewer or smaller images (≤5MB each, ≤6 per call)",
 }
 
+# PREDUCT_ (sic) is what Kaloclip actually returns for a full queue on script analysis
+_QUEUE_FULL = ("TASK_QUEUE_FULL", "PREDUCT_CHECK_BLOCKED", "PRODUCT_CHECK_BLOCKED")
+
 _STATUS_CODES = {403: "INSUFFICIENT_RIGHTS", 404: "NOT_FOUND", 413: "PAYLOAD_TOO_LARGE"}
 
 _CONFLICT_HINTS = {
@@ -134,6 +137,13 @@ def _translate(status: int, body: dict) -> ClipError:
     if code in _GATEWAY_HINTS:
         kind = "auth" if code == "INSUFFICIENT_RIGHTS" else "parameter"
         return ClipError(text, kind=kind, help_lines=[_GATEWAY_HINTS[code]])
+    # checked before the 400 branch: the queue rejection can come back as HTTP 400
+    if code in _QUEUE_FULL:
+        return ClipError(text, kind="queue", help_lines=[
+            "The account's task queue is full (Kaloclip membership limit, e.g. one running job on Free) — "
+            "nothing was submitted and no credits were spent; wait for the running video or analysis "
+            "(`clip job <job_id> --wait`), then rerun the same command with the same --idempotency-key",
+        ])
     # a model/duration/resolution that is not one `clip options` row
     if code == "VIDEO_MODEL_UNAVAILABLE" or (
             code == "ILLEGAL_ARGUMENT" and any(w in message for w in ("internalModelId", "duration", "resolution"))):
@@ -151,12 +161,6 @@ def _translate(status: int, body: dict) -> ClipError:
         return ClipError(text, kind="rate_limit", help_lines=[
             "Per-user rate limit (uploads/imports 10/min, product resolve 10/min, preview 20/min, videos 5/min) — "
             "wait at least 60 seconds before the next call",
-        ])
-    if code == "TASK_QUEUE_FULL":
-        return ClipError(text, kind="queue", help_lines=[
-            "The account's video queue is full (Kaloclip membership limit, e.g. one running video on Free) — "
-            "nothing was submitted and no credits were spent; wait for the running video "
-            "(`clip job <job_id> --wait`) and submit again",
         ])
     if code in _CONFLICT_HINTS:
         return ClipError(text, kind="parameter", help_lines=[_CONFLICT_HINTS[code]])
