@@ -134,6 +134,13 @@ def _translate(status: int, body: dict) -> ClipError:
     if code in _GATEWAY_HINTS:
         kind = "auth" if code == "INSUFFICIENT_RIGHTS" else "parameter"
         return ClipError(text, kind=kind, help_lines=[_GATEWAY_HINTS[code]])
+    # a model/duration/resolution that is not one `clip options` row
+    if code == "VIDEO_MODEL_UNAVAILABLE" or (
+            code == "ILLEGAL_ARGUMENT" and any(w in message for w in ("internalModelId", "duration", "resolution"))):
+        return ClipError(text, kind="parameter", help_lines=[
+            "This model/duration/resolution is not accepted now — run `clip options` and take --model, "
+            "--duration and --resolution from one of its rows",
+        ])
     if code in ("VALIDATION_FAILED", "INVALID_ARGUMENT") or status == 400:
         fields = _field_errors(body.get("data"))
         if fields:

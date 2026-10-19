@@ -178,7 +178,7 @@ def product(cfg, opts, args):
         for i in imgs
     ], ("asset_id", "description", "image_url"))
     hints = [f"Draft a script straight from the link: `clip script create --product-link '{args[0]}' "
-             "--model <MODEL> --duration <S>` (models: `clip options`)"]
+             "--model <MODEL> --duration <S> --resolution <R>` (one row of `clip options`)"]
     if not data.get("sellingPoints"):
         hints.append("selling_points is empty while Kaloclip is still analysing — rerun in a minute, or go on without")
     render.emit_help(hints)
