@@ -111,8 +111,9 @@ never loop submits.
   `SUBMISSION_OUTCOME_UNKNOWN`: stop and tell the user; don't resubmit.
 - **Jobs are async**: keep the job id; poll with `--wait` (every 5s). Never resubmit a job that is
   `queued` or `processing`.
-- `TASK_QUEUE_FULL`: the membership's video queue is full (Free: one video at a time). Nothing was
-  charged; wait for the running video, then submit again.
+- `TASK_QUEUE_FULL` (for analyses also `PREDUCT_CHECK_BLOCKED`): the membership's task queue is full —
+  a running video also blocks a script analysis. Nothing was charged; wait for the running job, then
+  rerun with the same `--idempotency-key`.
 - `RATE_LIMIT_EXCEEDED`: per-user limits (uploads/imports 10/min, product resolve 10/min, preview
   20/min, videos 5/min) — wait at least 60 seconds.
 - **A job `failed`**: the output shows `error_code` and a `help:` line saying what to change
@@ -121,10 +122,10 @@ never loop submits.
 
 ## Script analysis
 
-`clip analysis create <tiktok|kalodata|youtube-shorts url>` breaks a video into scenes
-(`video_scripts[]`: time, shot scale, visual description, voice-over), plus presenter gender, spoken language, camera moves and why it works. Shoppable TikTok videos:
+`clip analysis create <tiktok|kalodata|youtube-shorts url>` breaks a video into `scenes` (time,
+shot scale, visual description, timed voice-over), plus presenter gender, spoken language, camera moves and why it works. Shoppable TikTok videos:
 add `--commerce --country US`. Results stay readable for 30 days (`clip analysis get <job_id>`);
-add `--json` for every field (`translate_*` fields are always null — ignore them). Use it to learn from a viral video before drafting your own script.
+`--json` gives the raw `video_scripts[]` (its `translate_*` fields are always null). Use it to learn from a viral video before drafting your own script.
 
 ## Reading the data right
 

@@ -253,7 +253,35 @@ def job_display(job: dict) -> dict:
             output.pop("enhanceVideoUrl", None)
         elif output.get("enhanceVideoUrl"):
             output["videoUrl"] = output.pop("enhanceVideoUrl")
+        if job.get("jobType") == "SCRIPT_ANALYSIS" and isinstance(output.get("result"), dict):
+            output["result"] = analysis_display(output["result"])
         out["output"] = output
+    return out
+
+
+def _secs(v) -> str:
+    return "?" if v is None else f"{v:g}" if isinstance(v, (int, float)) else str(v)
+
+
+def analysis_display(result: dict) -> dict:
+    """Readable shot list: translate_* is always null upstream and the voice-over is nested per scene."""
+    out = {k: v for k, v in result.items()
+           if not k.startswith("translate_") and k not in ("video_scripts", "key_to_success_list")}
+    scenes = []
+    for sc in result.get("video_scripts") or []:
+        if not isinstance(sc, dict):
+            continue
+        lines = [a for a in sc.get("audio_script") or [] if isinstance(a, dict)]
+        scenes.append({
+            "time": f"{_secs(sc.get('start_time'))}-{_secs(sc.get('end_time'))}s",
+            "scene": sc.get("scene"),
+            "shot": sc.get("shot_scale"),
+            "visual": sc.get("visual_description"),
+            "voice_over": " ".join(f"[{_secs(a.get('start_time'))}-{_secs(a.get('end_time'))}s] {a.get('script')}"
+                                   for a in lines) or None,
+        })
+    if scenes:
+        out["scenes"] = scenes
     return out
 
 
@@ -296,7 +324,7 @@ def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
     if jtype == "VIDEO_CREATION":
         return ["videoUrl is the finished video (coverImageUrl its cover) — hand both to the user"]
     if jtype == "SCRIPT_ANALYSIS":
-        return ["output.result holds the shot-by-shot breakdown (video_scripts[]) — add --json for every field"]
+        return ["result.scenes is the shot-by-shot breakdown (time, shot, visual, voice-over) — --json gives the raw video_scripts[]"]
     if "SCRIPT" in jtype:
         return [
             "Review the script with the user; to change it, save the edited text to a file for --script-file",

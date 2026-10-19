@@ -339,6 +339,23 @@ def test_failed_job_hint_follows_error_code(capsys, env, error_code, needle):
     assert (f"error_code: {error_code}" in out) == bool(error_code)
 
 
+def test_analysis_result_is_readable(capsys, env):
+    env.responses["/script-analysis"] = ok({"id": 6, "state": "completed", "jobType": "SCRIPT_ANALYSIS", "output": {
+        "result": {"gender": "female", "language_code": "en", "translate_gender": None,
+                   "key_to_success": "1. Hook", "key_to_success_list": ["1. Hook"],
+                   "video_scripts": [{"scene": "Opening Hook", "shot_scale": "Close-Up", "start_time": 0, "end_time": 5,
+                                      "visual_description": "Hand points", "translate_scene": None,
+                                      "audio_script": [{"start_time": 0, "end_time": 5, "script": "This is the order.",
+                                                        "translate_script": None}]}]}}})
+    code, out = run(capsys, "analysis", "get", "6")
+    assert code == 0
+    assert "translate_" not in out and "key_to_success_list" not in out and "{'" not in out
+    assert "scenes[1]{time,scene,shot,visual,voice_over}:" in out
+    assert "0-5s,Opening Hook,Close-Up,Hand points,[0-5s] This is the order." in out
+    code, out = run(capsys, "analysis", "get", "6", "--json")
+    assert "translate_gender" in out  # --json stays raw
+
+
 def test_candidates(capsys, env):
     env.responses["/script-generations/resolve"] = ok({
         "state": "completed", "scriptType": "FIDELITY",
@@ -395,6 +412,15 @@ def test_queue_full(capsys, env):
                     "--model", "sd2", "--duration", "15", "--yes")
     assert code == 1
     assert "no credits were spent" in out
+
+
+@pytest.mark.parametrize("status", [200, 400])
+def test_analysis_queue_full_is_not_a_parameter_error(capsys, env, status):
+    env.responses["/script-analysis"] = (status, fail("PREDUCT_CHECK_BLOCKED", "Task queue is full, please try again later"))
+    code, out = run(capsys, "analysis", "create", "https://www.tiktok.com/@x/video/1", "--yes")
+    assert code == 1
+    assert "task queue is full" in out and "no credits were spent" in out
+    assert "Fix the flags" not in out
 
 
 def test_upstream_outage_is_retried_with_the_same_key(capsys, env):
