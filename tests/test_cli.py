@@ -370,6 +370,17 @@ def test_error_translation(capsys, env, status, body, kind_text):
     assert len(env.requests) == 1  # 4xx and business failures are not retried
 
 
+@pytest.mark.parametrize("code,message", [
+    ("ILLEGAL_ARGUMENT", "internalModelId=giv15 does not match duration=30"),
+    ("VIDEO_MODEL_UNAVAILABLE", "This model is temporarily unavailable. Please choose another model."),
+])
+def test_combination_not_in_options(capsys, env, code, message):
+    env.responses["/videos/preview"] = fail(code, message)
+    code_, out = run(capsys, "video", "preview", "--model", "giv15", "--duration", "30")
+    assert code_ == 1
+    assert message in out and "take --model, --duration and --resolution from one of its rows" in out
+
+
 def test_validation_failed_lists_fields(capsys, env):
     env.responses["/videos"] = (400, fail("VALIDATION_FAILED", "x", {"script": "must not be blank"}))
     code, out = run(capsys, "video", "create", "--script", "s", "--title", "t", "--image", IMG,
