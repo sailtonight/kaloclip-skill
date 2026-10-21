@@ -154,9 +154,14 @@ Deleted and trashed assets are not listed; `AUD` means uploaded audio files, not
 ## Script analysis
 
 `clip analysis create <tiktok|kalodata|youtube-shorts url>` breaks a video into `scenes` (time,
-shot scale, visual description, timed voice-over), plus presenter gender, spoken language, camera moves and why it works. Shoppable TikTok videos:
-add `--commerce --country US`. Results stay readable for 30 days (`clip analysis get <job_id>`);
-`--json` gives the raw `video_scripts[]` (its `translate_*` fields are always null). Use it to learn from a viral video before drafting your own script.
+shot scale, visual description, timed voice-over), plus presenter gender, spoken language, camera
+moves and why it works. Shoppable TikTok videos: add `--commerce --country US`. Results stay
+readable for 30 days (`clip analysis get <job_id>`); `--json` gives the raw `video_scripts[]` (its
+`translate_*` fields are always null).
+
+To make a product video in the style of a viral one, pass what works (hook, scene order, camera,
+why it works) as `--description` to `clip script create` — the script still comes from Kaloclip,
+not from you.
 
 ## Reading the data right
 

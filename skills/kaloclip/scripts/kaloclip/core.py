@@ -119,6 +119,10 @@ def parse_args(cmd: Command, tokens: list[str]) -> tuple[dict, list[str]]:
                     raw = int(raw)
                 except ValueError:
                     raise UsageError(f"{name} expects an integer, got '{raw}'") from None
+                if f.min is not None:
+                    raw = max(raw, f.min)
+                if f.max is not None:
+                    raw = min(raw, f.max)
             if f.kind == "multi":
                 opts[f.dest] = (opts[f.dest] or []) + [raw]
             else:

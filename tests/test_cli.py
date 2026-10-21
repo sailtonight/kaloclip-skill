@@ -185,6 +185,19 @@ def test_asset_list_defaults_and_alias(capsys, env):
     assert "assets: 0 results" in out
 
 
+def test_int_flags_are_clamped_to_their_bounds(capsys, env):
+    env.responses["/assets/page"] = ok({"pageNo": 1, "pageSize": 100, "total": 0, "data": []})
+    run(capsys, "asset", "list", "--page", "-2", "--page-size", "500")
+    assert env.requests[0][2] == {"pageNo": "1", "pageSize": "100"}
+
+
+def test_failed_listing_has_no_still_generating_hint(capsys, env):
+    env.responses["/assets/page"] = ok({"pageNo": 1, "pageSize": 20, "total": 1, "data": [
+        {"id": 1, "assetType": "VID", "assetSource": "AI", "url": None}]})
+    code, out = run(capsys, "asset", "list", "--source", "AI", "--state", "FAILED")
+    assert code == 0 and "still being generated" not in out
+
+
 def test_asset_state_needs_ai_source(capsys, env):
     code, out = run(capsys, "asset", "list", "--state", "COMPLETED")
     assert code == 2
