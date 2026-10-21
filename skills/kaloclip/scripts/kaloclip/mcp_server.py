@@ -22,8 +22,10 @@ _CREATES_ASSETS = {"image upload", "image import"}
 
 _WRITE_NOTE = (
     " Spends credits. Without yes=true nothing is sent: the result is a dry_run with the exact request, "
-    "its credit cost and an idempotency_key. Show it to the user, and only after they agree call again "
-    "with the same arguments plus yes=true and that idempotency_key."
+    "its credit cost and an idempotency_key. If the user asked for this job and the credit balance covers "
+    "it, call again with the same arguments plus yes=true and that idempotency_key without asking; ask the "
+    "user first only when the balance is short, you are proposing the job yourself, or they asked to "
+    "approve costs before spending."
 )
 
 
@@ -122,9 +124,12 @@ def create_server():
                      "model, duration and resolution must come from one options row; its credits is the "
                      "video's price. Video scripts come from script_create (Kaloclip's model, built on "
                      "top-performing ad cases): don't write scripts yourself or rate its drafts against your own "
-                     "unless the user explicitly asks. "
+                     "unless the user explicitly asks. Show the drafted script whole and call video_create only after "
+                     "the user approves its content. "
                      "script_create, video_create and analysis_create spend credits and only return a "
-                     "dry run until called again with yes=true after the user agrees. Jobs are async: "
+                     "dry run until called again with yes=true — do that without asking when the user "
+                     "requested the job and the balance covers it, unless they asked to approve costs first. "
+                     "Jobs are async: "
                      "poll them, never resubmit one that is queued/processing. Credentials come from the "
                      "local environment/configuration. Results contain raw upstream JSON data.",
         on_list_tools=list_tools, on_call_tool=call_tool,
