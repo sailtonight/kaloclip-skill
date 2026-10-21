@@ -10,9 +10,10 @@ for _mod in (assets, creation, meta):
     COMMANDS.extend(_mod.COMMANDS)
 
 # noun -> default subcommand when invoked bare
-DEFAULT_SUB = {"config": "show"}
+DEFAULT_SUB = {"config": "show", "asset": "list"}
 
 ALIASES = {
+    "assets": "asset",
     "credits": "credit",
     "images": "image",
     "products": "product",

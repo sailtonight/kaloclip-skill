@@ -60,6 +60,7 @@ and don't retry. Walk the user through these steps and wait:
 |---|---|
 | `clip options` | the model × duration × resolution combinations accepted right now, each with its credits |
 | `clip credit` | remaining credits |
+| `clip asset list` | assets already in the account; `--type IMG\|VID\|AUD --source USER\|AI --state COMPLETED --page N` |
 | `clip product resolve <link>` | product link → title, categories, selling points, image assets |
 | `clip image upload <file...>` | 1–6 local images (JPEG/PNG/GIF/WebP, ≤5MB) → asset ids |
 | `clip image import <url...>` | 1–6 public https image URLs → asset ids |
@@ -139,6 +140,13 @@ never loop submits.
 - **A job `failed`**: the output shows `error_code` and a `help:` line saying what to change
   (e.g. replace a flagged image, shorten the script). Tell the user, fix that input, and submit a
   new job with a new key only after they agree. The failed job's credits are refunded.
+
+## Earlier work
+
+`clip asset list` pages through what the account already has (free): past generated videos are
+`--type VID --source AI --state COMPLETED` (`url` = mp4, `cover`), earlier images are `--type IMG`
+and its `help:` line gives ready `--image ID=URL` flags — reuse them instead of uploading again.
+Deleted and trashed assets are not listed; `AUD` means uploaded audio files, not cloned voices.
 
 ## Script analysis
 

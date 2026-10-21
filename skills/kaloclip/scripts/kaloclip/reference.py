@@ -23,6 +23,7 @@ COMMAND_TABLE = [
     ("clip options", "model × duration × resolution rows with credits (free)"),
     ("clip credit", "remaining credits (free)"),
     ("clip product resolve <link>", "product link → title, categories, selling points, image assets (free)"),
+    ("clip asset list", "assets already in the account, e.g. past videos: --type VID --source AI (free)"),
     ("clip image upload <file...>", "local images → asset ids, 1-6, ≤5MB each (free)"),
     ("clip image import <url...>", "public image URLs → asset ids (free)"),
     ("clip script create", "[credits] draft a script; --product-link or --image/--title/--category"),

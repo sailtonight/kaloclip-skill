@@ -155,6 +155,50 @@ def test_image_import_partial_failure(capsys, env):
     assert env.requests[0][4] == ["https://a/1.jpg", "https://a/2.jpg"]
 
 
+ASSETS = {"pageNo": 1, "pageSize": 2, "total": 5, "data": [
+    {"id": 745981, "assetType": "VID", "assetSource": "AI", "fileName": "QfJVfDLwJgcfs8cZ.mp4",
+     "url": "https://v/1.mp4", "coverImageUrl": "https://v/1.jpg", "state": 1, "gmtCreated": 1792032517222},
+    {"id": 745967, "assetType": "IMG", "assetSource": "USER", "fileName": "a.jpg", "url": "https://r/a.jpg",
+     "coverImageUrl": None, "state": 1, "gmtCreated": 1792032517222},
+]}
+
+
+def test_asset_list(capsys, env):
+    env.responses["/assets/page"] = ok(ASSETS)
+    code, out = run(capsys, "asset", "list", "--type", "VID", "--source", "AI", "--state", "COMPLETED",
+                    "--page-size", "2")
+    assert code == 0, out
+    assert env.requests[0][2] == {"assetType": "VID", "assetSource": "AI", "state": "COMPLETED",
+                                  "pageNo": "1", "pageSize": "2"}
+    assert "assets[2]{asset_id,type,source,file_name,created,url,cover}:" in out
+    assert '745981,VID,AI,QfJVfDLwJgcfs8cZ.mp4,"2026-10-15T02:48:37Z","https://v/1.mp4","https://v/1.jpg"' in out
+    assert "total: 5" in out
+    assert "--image 745967=https://r/a.jpg" in out
+    assert "rerun with --page 2" in out
+
+
+def test_asset_list_defaults_and_alias(capsys, env):
+    env.responses["/assets/page"] = ok({"pageNo": 1, "pageSize": 20, "total": 0, "data": []})
+    code, out = run(capsys, "assets")
+    assert code == 0
+    assert env.requests[0][2] == {"pageNo": "1", "pageSize": "20"}
+    assert "assets: 0 results" in out
+
+
+def test_asset_state_needs_ai_source(capsys, env):
+    code, out = run(capsys, "asset", "list", "--state", "COMPLETED")
+    assert code == 2
+    assert "needs --source AI" in out
+    assert env.requests == []
+
+
+def test_gateway_without_the_endpoint(capsys, env):
+    env.responses["/assets/page"] = (404, None)
+    code, out = run(capsys, "asset", "list")
+    assert code == 1
+    assert "NOT_FOUND" in out and "does not offer this command yet" in out
+
+
 # --- dry runs and submits ------------------------------------------------------
 
 def test_script_create_dry_run_sends_nothing_billable(capsys, env):
