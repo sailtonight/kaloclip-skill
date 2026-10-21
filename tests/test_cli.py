@@ -360,6 +360,16 @@ def test_completed_video(capsys, env):
     assert env.requests[0][2] == {"jobId": "3"}
 
 
+def test_completed_video_says_how_to_deliver_in_chat(capsys, env):
+    env.responses["/videos"] = ok({"id": 3, "state": "completed", "jobType": "VIDEO_CREATION",
+                                   "input": {"duration": 15, "aspectRatio": "RATIO_9_16", "resolution": "720P"},
+                                   "output": {"videoUrl": "https://v/3.mp4", "coverImageUrl": "https://v/3.jpg"}})
+    code, out = run(capsys, "video", "get", "3")
+    assert code == 0
+    assert "duration: 15s" in out and 'ratio: "9:16"' in out
+    assert "deliver it as a video message" in out and "(15s, 9:16)" in out
+
+
 def test_old_video_falls_back_to_enhance_url(capsys, env):
     env.responses["/jobs"] = ok({"id": 4, "state": "completed", "jobType": "VIDEO_CREATION",
                                  "output": {"videoUrl": None, "enhanceVideoUrl": "https://v/4e.mp4"}})

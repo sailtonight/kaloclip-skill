@@ -242,6 +242,7 @@ def job_display(job: dict) -> dict:
         "state": job.get("state"),
         "error": job.get("errorMessage"),
         "error_code": job.get("errorCode"),
+        **video_shape(job),
         "created": ms_iso(job.get("gmtCreated")),
         "updated": ms_iso(job.get("gmtUpdated")),
     })
@@ -309,6 +310,19 @@ def failure_hint(job: dict) -> str:
                               "Kaloclip failed on its side — wait a minute, then " + _RETRY + " with the same inputs")
 
 
+_RATIO_NAMES = {"RATIO_9_16": "9:16", "RATIO_16_9": "16:9"}
+
+
+def video_shape(job: dict) -> dict:
+    """Duration and aspect ratio of a video job, from its input snapshot (output carries neither)."""
+    snap = job.get("input") if isinstance(job.get("input"), dict) else {}
+    if not str(job.get("jobType") or "").startswith("VIDEO_") or not snap:
+        return {}
+    duration = snap.get("duration")
+    return compact({"duration": f"{duration}s" if duration else None,
+                    "ratio": _RATIO_NAMES.get(snap.get("aspectRatio"), snap.get("aspectRatio"))})
+
+
 def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
     state = job.get("state")
     jtype = job.get("jobType") or ""
@@ -322,7 +336,14 @@ def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
     if state != "completed":
         return []
     if jtype == "VIDEO_CREATION":
-        return ["videoUrl is the finished video (coverImageUrl its cover) — hand both to the user"]
+        shape = video_shape(job)
+        specs = ", ".join(v for v in (shape.get("duration"), shape.get("ratio")) if v)
+        return [
+            "videoUrl is the finished video (coverImageUrl its cover) — hand both to the user",
+            "In a chat, deliver it as a video message, not a bare link: upload the mp4 from videoUrl with "
+            "coverImageUrl as its cover" + (f" and its duration and ratio ({specs})" if specs else "")
+            + " — without cover and duration it shows as a blank 00:00 tile",
+        ]
     if jtype == "SCRIPT_ANALYSIS":
         return ["result.scenes is the shot-by-shot breakdown (time, shot, visual, voice-over) — --json gives the raw video_scripts[]"]
     if "SCRIPT" in jtype:
