@@ -194,7 +194,7 @@ def asset_list(cfg, opts, args):
         hints.append(f"Reuse images in `clip script create` / `clip video create`: {flags}")
     if any(r["type"] == "VID" and r["source"] == "AI" for r in rows):
         hints.append("AI videos: url is the finished mp4, cover its cover image")
-    if any(not r["url"] for r in rows) and opts.get("state") != "FAILED":
+    if any(not r["url"] and r["source"] == "AI" for r in rows) and opts.get("state") != "FAILED":
         hints.append("Rows without url are still being generated or their job failed — list again later; "
                      "`--source AI --state FAILED` shows the failed ones")
     if isinstance(total, int) and page * (data.get("pageSize") or params["pageSize"]) < total:

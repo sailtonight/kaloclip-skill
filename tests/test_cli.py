@@ -198,6 +198,13 @@ def test_failed_listing_has_no_still_generating_hint(capsys, env):
     assert code == 0 and "still being generated" not in out
 
 
+def test_urlless_upload_has_no_generation_hint(capsys, env):
+    env.responses["/assets/page"] = ok({"pageNo": 1, "pageSize": 20, "total": 1, "data": [
+        {"id": 2, "assetType": "AUD", "assetSource": "USER", "url": None}]})
+    code, out = run(capsys, "asset", "list")
+    assert code == 0 and "still being generated" not in out
+
+
 def test_asset_state_needs_ai_source(capsys, env):
     code, out = run(capsys, "asset", "list", "--state", "COMPLETED")
     assert code == 2
