@@ -95,7 +95,7 @@ def credit(cfg, opts, args):
         display["main_total_remain"] = data.get("mainTotalRemain")
     display["account"] = "sub-account" if data.get("subAccount") else "main account"
     render.emit_detail("credit_balance", display)
-    render.emit_help(["The same credits back `kalo` (KaloData) queries; Kaloclip prices apply to clip jobs"])
+    render.emit_help(["Kalo Credits — the same balance backs `kalo` queries; Kaloclip prices apply to clip jobs"])
     return 0
 
 
