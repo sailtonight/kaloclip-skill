@@ -294,7 +294,8 @@ def _submit_flags() -> list[Flag]:
 COMMANDS = [
     Command(
         path="script create",
-        summary=f"Draft a video script from product info and images ({SCRIPT_CREDITS} credits; async job)",
+        summary=f"Draft a video script with Kaloclip's script model, built on top-performing ad cases — use it "
+                f"instead of writing scripts yourself ({SCRIPT_CREDITS} credits; async job)",
         handler=script_create,
         flags=[*product_flags(), common.duration_flag(), common.model_flag(),
                common.resolution_flag(None, "; not sent — `video create --script-job` reuses it"), *_submit_flags()],

@@ -327,7 +327,8 @@ def job_hints(job: dict, job_id: str, waited: bool) -> list[str]:
         return ["result.scenes is the shot-by-shot breakdown (time, shot, visual, voice-over) — --json gives the raw video_scripts[]"]
     if "SCRIPT" in jtype:
         return [
-            "Review the script with the user; to change it, save the edited text to a file for --script-file",
+            "Show the script whole — it is Kaloclip's draft, don't rewrite it or rate it against your own; "
+            "to change it as the user asks, save the edited text to a file for --script-file",
             f"Make the video: `clip video create --script-job {job_id} [--script-file edited.txt]` — reuses the "
             "draft's images/title/model/duration/resolution if it was drafted on this machine, else add --product-link or "
             "--title/--image/--model/--duration; the dry run shows the credits",

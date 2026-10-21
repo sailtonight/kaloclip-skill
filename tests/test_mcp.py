@@ -33,6 +33,7 @@ def test_discovery_and_annotations(env):
                 assert tools[name].annotations.read_only_hint is False
                 assert "yes=true" in tools[name].description
             assert tools["image_upload"].annotations.read_only_hint is False
+            assert "instead of writing scripts yourself" in tools["script_create"].description
             schema = tools["image_import"].input_schema
             assert schema["required"] == ["urls"] and schema["additionalProperties"] is False
             assert tools["job"].input_schema["required"] == ["job_id"]
