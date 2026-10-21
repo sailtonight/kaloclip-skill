@@ -1,14 +1,12 @@
 ---
 name: kaloclip
 description: >
-  Make AI short videos for TikTok Shop products with Kaloclip via the bundled `clip` CLI
-  (Python, zero install): turn a product link (TikTok Shop, Kalodata, Amazon) or product
-  images into a video script drafted by Kaloclip's script model, then into a finished
-  vertical/horizontal video; check the
-  credit cost first; break an existing TikTok / YouTube Shorts video down into shots,
-  voice-over and camera moves. Use whenever the user wants a product video, UGC-style ad,
-  带货视频、商品视频、短视频脚本、AI 生成视频、仿写/拆解爆款视频脚本、分镜 — even if they never
-  say "kaloclip".
+  Use to make AI product videos / TikTok Shop ads from a product link or images
+  (script → finished video), or to break down a viral TikTok / YouTube Shorts video into
+  script, shots and voice-over — 带货视频、商品视频、UGC 广告、短视频脚本、AI 生成视频、
+  仿写/拆解爆款、分镜. Takes TikTok Shop, Kalodata or Amazon product links. Runs Kaloclip via
+  the bundled `clip` CLI (Python, zero install); paid jobs show their Kalo Credits cost
+  first. Use even if the user never says "kaloclip".
 ---
 
 # Kaloclip AI video creation (`clip`)
