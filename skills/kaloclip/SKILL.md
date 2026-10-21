@@ -108,7 +108,8 @@ change; keep its structure.
    (a draft takes about 30–60s; the credits are charged on submit).
 5. Show the script whole. To change it as the user asks, write the edited text to a file and use
    `--script-file`.
-6. `clip video create --script-job <job_id> [--script-file edited.txt]` → a dry run that includes
+6. Once the user is happy with the script (that approval is about content, not cost),
+   `clip video create --script-job <job_id> [--script-file edited.txt]` → a dry run that includes
    the credit cost; it reuses the draft's options row (model, duration, resolution). Rerun with `--yes --idempotency-key <key>`.
 7. `clip video get <job_id> --wait` — a 15s video takes about 15 minutes (`--wait` polls up to 20).
    Tell the user it is running; if `--wait` times out, poll again — never resubmit. Hand `videoUrl`

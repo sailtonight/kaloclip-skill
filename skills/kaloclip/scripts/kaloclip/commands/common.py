@@ -148,7 +148,8 @@ def submit(cfg, opts, path: str, body: dict, *, extra_preview: dict | None = Non
                 emit_text("script", script)
             render.emit_help([
                 "Nothing was sent and no credits were spent. If the user asked for this job and `clip credit` "
-                f"covers it, rerun the same command with --yes --idempotency-key {key}; otherwise ask them first",
+                f"covers it, rerun the same command with --yes --idempotency-key {key}; ask them first if the "
+                "balance is short, you are proposing the job yourself, or they asked to approve costs",
             ])
         return None
     try:

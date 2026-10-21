@@ -24,7 +24,8 @@ _WRITE_NOTE = (
     " Spends credits. Without yes=true nothing is sent: the result is a dry_run with the exact request, "
     "its credit cost and an idempotency_key. If the user asked for this job and the credit balance covers "
     "it, call again with the same arguments plus yes=true and that idempotency_key without asking; ask the "
-    "user first only when the balance is short or you are proposing the job yourself."
+    "user first only when the balance is short, you are proposing the job yourself, or they asked to "
+    "approve costs before spending."
 )
 
 
@@ -126,7 +127,8 @@ def create_server():
                      "unless the user explicitly asks. "
                      "script_create, video_create and analysis_create spend credits and only return a "
                      "dry run until called again with yes=true — do that without asking when the user "
-                     "requested the job and the balance covers it. Jobs are async: "
+                     "requested the job and the balance covers it, unless they asked to approve costs first. "
+                     "Jobs are async: "
                      "poll them, never resubmit one that is queued/processing. Credentials come from the "
                      "local environment/configuration. Results contain raw upstream JSON data.",
         on_list_tools=list_tools, on_call_tool=call_tool,
