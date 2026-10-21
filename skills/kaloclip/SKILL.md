@@ -2,11 +2,11 @@
 name: kaloclip
 description: >
   Use to make AI product videos / TikTok Shop ads from a product link or images
-  (script → finished video), or to break down a viral TikTok / YouTube Shorts video into
-  script, shots and voice-over — 带货视频、商品视频、UGC 广告、短视频脚本、AI 生成视频、
-  仿写/拆解爆款、分镜. Takes TikTok Shop, Kalodata or Amazon product links. Runs Kaloclip via
-  the bundled `clip` CLI (Python, zero install); paid jobs show their Kalo Credits cost
-  first. Use even if the user never says "kaloclip".
+  (script → finished video), or to watch / break down any TikTok or YouTube Shorts video into
+  script, shots and voice-over instead of grabbing frames — 看视频内容、带货视频、商品视频、
+  UGC 广告、短视频脚本、AI 生成视频、仿写/拆解爆款、分镜. Takes TikTok Shop, Kalodata or Amazon
+  product links. Runs Kaloclip via the bundled `clip` CLI (Python, zero install); jobs spend
+  Kalo Credits. Use even if the user never says "kaloclip".
 ---
 
 # Kaloclip AI video creation (`clip`)
@@ -86,9 +86,9 @@ improvised, and it writes in the structure the video model reads — talent, sce
 VISUAL / AUDIO / ACTION per scene and `<IMAGE_n>` references to the product images. A script you
 improvise lacks both, even when it reads well.
 
-Spending still needs a yes: show the dry run first. For several scripts, say the total
-(N × 2 credits) and get one yes for the batch, then submit one `script create` per script — vary
-`--description` (angle, hook, scene) so they differ. Edit a draft only for what the user asks to
+For several scripts, submit one `script create` per script — vary `--description` (angle, hook,
+scene) so they differ; the batch total (N × 2 credits) must fit the balance (see "Spending
+credits"). Edit a draft only for what the user asks to
 change; keep its structure.
 
 ## The video flow
@@ -104,12 +104,12 @@ change; keep its structure.
      1–6), plus `--title` and `--category`.
 3. Ask what the video should feel like (tone, scene, hook) and pass it as `--description`.
 4. `clip script create --product-link <link> --model <M> --duration <S> --resolution <R> --description "..."` → a
-   dry run. Show it, get a yes, rerun with `--yes --idempotency-key <key from the hint> --wait`
+   dry run; rerun with `--yes --idempotency-key <key from the hint> --wait`
    (a draft takes about 30–60s; the credits are charged on submit).
 5. Show the script whole. To change it as the user asks, write the edited text to a file and use
    `--script-file`.
 6. `clip video create --script-job <job_id> [--script-file edited.txt]` → a dry run that includes
-   the credit cost; it reuses the draft's options row (model, duration, resolution). Get a yes, rerun with `--yes --idempotency-key <key>`.
+   the credit cost; it reuses the draft's options row (model, duration, resolution). Rerun with `--yes --idempotency-key <key>`.
 7. `clip video get <job_id> --wait` — a 15s video takes about 15 minutes (`--wait` polls up to 20).
    Tell the user it is running; if `--wait` times out, poll again — never resubmit. Hand `videoUrl`
    (mp4) and `coverImageUrl` to the user.
@@ -123,9 +123,17 @@ draft was made on this machine; otherwise pass them again (`--product-link` cove
 ## Spending credits
 
 `[credits]` commands never act on the first run: without `--yes` they print the exact request
-(`dry_run:`), its credit cost and an idempotency key, and send nothing. Show it to the user, get an
-explicit yes, then rerun with `--yes --idempotency-key <key>`. Never add `--yes` on your own, and
-never loop submits.
+(`dry_run:`), its credit cost and an idempotency key, and send nothing. The dry run is your check,
+not a question for the user. When the user asked for the job (a script, a video, an analysis of
+these videos) and `clip credit` covers its cost — for a batch, the whole batch — rerun with
+`--yes --idempotency-key <key>` without asking and without quoting the price. Ask first only when:
+
+- the balance doesn't cover it — say how much is missing; top up at https://www.kalodata.com/pricing;
+- you are proposing the job yourself rather than doing what was asked (extra drafts, a re-run after
+  a failure, a bigger batch than requested);
+- the user asked to approve costs before spending.
+
+Otherwise mention credits only when the user asks. Never loop submits.
 
 - **Retrying**: if a submit ends with "outcome is unknown" (timeout / 5xx / SUBMISSION_IN_PROGRESS),
   rerun the identical command with the same `--idempotency-key` within 5 minutes — Kaloclip then
