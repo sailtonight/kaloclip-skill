@@ -115,6 +115,9 @@ change; keep its structure.
 7. `clip video get <job_id> --wait` — a 15s video takes about 15 minutes (`--wait` polls up to 20).
    Tell the user it is running; if `--wait` times out, poll again — never resubmit. Hand `videoUrl`
    (mp4) and `coverImageUrl` to the user.
+8. Delivering in a chat (Feishu/Lark, Slack, …): send the video as a video message, not a bare link —
+   upload the mp4 from `videoUrl` with `coverImageUrl` as its cover and the job's `duration` and
+   `ratio` (shown by `clip video get`). Without cover and duration it shows as a blank `00:00` tile.
 
 `--script-job` reuses the images, title, model, duration and resolution of the draft when the
 draft was made on this machine; otherwise pass them again (`--product-link` covers most of it).
