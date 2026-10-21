@@ -39,6 +39,7 @@ COMMAND_TABLE = [
 
 CONVENTIONS = [
     "[credits] commands only print a dry run until rerun with --yes — show it to the user first",
+    "Video scripts come from `clip script create` (Kaloclip's model, built on top-performing ads) — don't write your own unless asked",
     "Flow: options → product resolve → script create → script get --wait → video preview → video create → video get --wait",
     "Jobs are async: keep the job id and poll (`--wait`); never resubmit a queued/processing job",
     "--image takes ASSET_ID=IMAGE_URL (repeat, 1-6); --model/--duration/--resolution from one `clip options` row",
