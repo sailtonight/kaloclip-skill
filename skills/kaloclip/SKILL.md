@@ -42,7 +42,7 @@ and don't retry. Walk the user through these steps and wait:
    *generate key*. No account yet? Register at https://www.kalodata.com/open-center/home first.
 2. **Save it** — `clip config set --key <API_KEY>` (stored in `~/.config/kalodata/config.toml`,
    mode 0600, shared with `kalo`), or set `KALODATA_API_KEY` in the environment.
-3. **Credits** — the same credit balance as KaloData; Kaloclip prices and membership rules apply.
+3. **Credits** — jobs spend Kalo Credits, the same balance `kalo` uses; Kaloclip prices and membership rules apply.
    `clip credit` shows the balance.
 
    | call | credits |

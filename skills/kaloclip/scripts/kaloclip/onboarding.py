@@ -16,7 +16,7 @@ SETUP_LINES = [
     "if `kalo` (the kalodata skill) already works on this machine, the key is already set.",
     "2. Save it: `clip config set --key <API_KEY>`, or set KALODATA_API_KEY in the environment "
     "(shared with `kalo`, stored in ~/.config/kalodata/config.toml).",
-    "3. Credits: script drafts, videos and script analysis spend the account's credits at "
+    "3. Credits: script drafts, videos and script analysis spend the account's Kalo Credits at "
     f"Kaloclip prices, under Kaloclip membership rules (queue size, watermark) — see {CLIP_URL}. "
     "`clip credit` shows the balance.",
 ]

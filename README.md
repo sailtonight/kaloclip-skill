@@ -23,7 +23,7 @@ export KALODATA_API_KEY=<token>      # or: clip config set --key <token>
 
 The key is sent as the `secret-key` header to the KaloData gateway (`/openapi/v1/clip/**`), which identifies the account from it. Optional: `KALOCLIP_BASE_URL`, or `clip config set --base-url staging` for the staging gateway.
 
-Jobs spend the account's credits at Kaloclip prices, under the account's Kaloclip membership (video queue size, watermark): a script draft costs 2 credits, a script analysis 1; a video costs the `credits` that `clip options` lists for its model × duration × resolution. Everything else is free, and failed jobs are refunded. `clip credit` shows the balance.
+Jobs spend the account's Kalo Credits at Kaloclip prices, under the account's Kaloclip membership (video queue size, watermark): a script draft costs 2 credits, a script analysis 1; a video costs the `credits` that `clip options` lists for its model × duration × resolution. Everything else is free, and failed jobs are refunded. `clip credit` shows the balance.
 
 ## Usage
 
