@@ -50,6 +50,7 @@ Output is token-efficient TOON; add `--json` for raw JSON. Exit codes: `0` succe
 | `clip options` | Model × duration × resolution combinations accepted now, with credits per video |
 | `clip credit` | Credit balance |
 | `clip product resolve <link>` | TikTok Shop / Kalodata / Amazon link → title, categories, selling points, image assets |
+| `clip asset list` | Assets already in the account (images, past generated videos, uploaded audio), paged |
 | `clip image upload <file...>` / `clip image import <url...>` | Images → asset ids (`--image ASSET_ID=URL`) |
 | `clip script create` / `get` / `candidates` | Draft a script (2 credits); read drafts and web rewrite candidates |
 | `clip video preview` / `create` / `get` | Estimate, make and fetch videos |

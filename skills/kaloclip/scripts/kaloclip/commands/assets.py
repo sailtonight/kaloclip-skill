@@ -152,6 +152,56 @@ def import_(cfg, opts, args):
     return _emit_assets(data, opts)
 
 
+ASSET_TYPES = ("IMG", "VID", "AUD")
+ASSET_SOURCES = ("USER", "AI", "EXT", "PARTNER")
+AI_STATES = ("QUEUED", "PREPARED", "PROCESSING", "PROCESSED", "ENHANCED", "COMPLETED", "FAILED")
+ASSET_PAGE_DEFAULT = 20
+
+
+def asset_list(cfg, opts, args):
+    if opts.get("state") and opts.get("source") != "AI":
+        raise UsageError("--state filters AI generation jobs and needs --source AI",
+                         ["e.g. finished generated videos: `clip asset list --type VID --source AI --state COMPLETED`"])
+    page = opts.get("page") or 1
+    params = {"assetType": opts.get("type"), "assetSource": opts.get("source"), "state": opts.get("state"),
+              "pageNo": page, "pageSize": opts.get("page_size") or ASSET_PAGE_DEFAULT}
+    data = api.request(cfg, "GET", "/assets/page", params=params) or {}
+    if opts.get("json"):
+        render.emit_json(data)
+        return 0
+    items = [a for a in data.get("data") or [] if isinstance(a, dict)]
+    total = data.get("total")
+    if not items:
+        render.emit_empty("assets", f"page {page}, {total or 0} in total",
+                          ["Drop --type/--source/--state to see every asset"] if any(
+                              opts.get(k) for k in ("type", "source", "state")) else [])
+        return 0
+    rows = [{
+        "asset_id": a.get("id"), "type": a.get("assetType"), "source": a.get("assetSource"),
+        "file_name": a.get("fileName"), "created": common.ms_iso(a.get("gmtCreated")),
+        "url": a.get("url") or None, "cover": a.get("coverImageUrl") or None,
+    } for a in items]
+    fields = ["asset_id", "type", "source", "file_name", "created", "url"]
+    if any(r["cover"] for r in rows):
+        fields.append("cover")
+    render.emit_table("assets", rows, fields)
+    render.emit_detail("page", {"page": data.get("pageNo") or page, "page_size": data.get("pageSize"),
+                                "total": total})
+    hints = []
+    images = [r for r in rows if r["type"] == "IMG" and r["asset_id"] is not None and r["url"]]
+    if images:
+        flags = " ".join(f"--image {r['asset_id']}={r['url']}" for r in images[: common.IMAGES_MAX])
+        hints.append(f"Reuse images in `clip script create` / `clip video create`: {flags}")
+    if any(r["type"] == "VID" and r["source"] == "AI" for r in rows):
+        hints.append("AI videos: url is the finished mp4, cover its cover image")
+    if any(not r["url"] for r in rows):
+        hints.append("Rows without url are still being generated — list again later")
+    if isinstance(total, int) and page * (data.get("pageSize") or params["pageSize"]) < total:
+        hints.append(f"More assets: rerun with --page {page + 1}")
+    render.emit_help(hints)
+    return 0
+
+
 def resolve_product(cfg, link: str, country: str | None, language: str | None) -> dict:
     if len(link) > 2048:
         raise UsageError("product link is longer than 2048 characters")
@@ -186,6 +236,26 @@ def product(cfg, opts, args):
 
 
 COMMANDS = [
+    Command(
+        path="asset list",
+        summary="Assets already in the account — images, videos (incl. past generated videos), uploaded audio (free)",
+        handler=asset_list,
+        flags=[
+            Flag("--type", "IMG | VID | AUD (AUD = uploaded audio files, not cloned voices); default all",
+                 choices=ASSET_TYPES, metavar="TYPE"),
+            Flag("--source", "USER (uploaded) | AI (generated) | EXT | PARTNER; default all",
+                 choices=ASSET_SOURCES, metavar="SOURCE"),
+            Flag("--state", "generation job state, with --source AI only: " + " | ".join(AI_STATES),
+                 choices=AI_STATES, metavar="STATE"),
+            Flag("--page", "page number, from 1", kind="int", default=1, min=1, metavar="N"),
+            Flag("--page-size", "assets per page (max 100)", kind="int", default=ASSET_PAGE_DEFAULT,
+                 min=1, max=100, metavar="N"),
+        ],
+        examples=[
+            "clip asset list --type VID --source AI --state COMPLETED",
+            "clip asset list --type IMG --page 2",
+        ],
+    ),
     Command(
         path="options",
         summary="Model × duration × resolution combinations accepted right now, with credits per video (free)",
